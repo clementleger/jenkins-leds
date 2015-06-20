@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import requests, json, sys, time, serial
+from struct import *
 
 url_base = "https://localhost:8443/jenkins/job/"
 
@@ -13,10 +14,11 @@ url = url_base + sys.argv[1] + "/lastBuild/api/json"
 ser = serial.Serial('/dev/ttyUSB1', 9600)
 
 time.sleep(3)
+command = ""
 for i in range(0,5):
-	command = str(i) + "0"
-	ser.write(command)
+	command += pack('!BBBBB', i, 2, 0, 0, 0)
 
+ser.write(command)
 ser.flush()
 
 print "Polling url " + url
@@ -28,11 +30,11 @@ while True:
 	command = ""
 	for build in job_status['subBuilds']:
 		if build['result'] == 'SUCCESS':
-			command += str(i) + "2"
+			command += pack('!BBBBB', i, 2, 0, 255, 0)
 		if build['result'] == None:
-			command += str(i) + "1"
+			command += pack('!BBBBBH', i, 0, 0, 0, 255, 0)
 		if build['result'] == 'FAILURE':
-			command += str(i) + "3"
+			command += pack('!BBBBB', i, 2, 255, 0, 0)
 		i += 1
 
 	if len(command) > 0:
