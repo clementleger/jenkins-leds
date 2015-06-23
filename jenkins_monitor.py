@@ -3,34 +3,55 @@
 import requests, json, sys, time, serial
 from struct import *
 
-url_base = "https://localhost:8443/jenkins/job/"
-
-if len(sys.argv) < 2:
-	print "Missing Job name"
+if len(sys.argv) < 3:
+	print "Missing Job name and username"
 	exit(1)
 
-url = url_base + sys.argv[1] + "/lastBuild/api/json"
+def is_current_user_build(username, job_json):
+	actions = job_json['actions']
+	parameters = actions[0]['parameters']
 
-ser = serial.Serial('/dev/ttyUSB1', 9600)
+	for parameter in parameters:
+		if parameter['name'] == 'CURRENT_BRANCH' and username in parameter['value']:
+			return True
+			
+	return False
 
-time.sleep(3)
-command = ""
-for i in range(0,5):
-	command += pack('!BBBBB', i, 2, 0, 0, 0)
+def open_serial(device, baudrate):
+	ser = serial.Serial(device, baudrate)
 
-ser.write(command)
-ser.flush()
+	# The arduino take some times to boot after reset, let it cool
+	time.sleep(1)
 
-print "Polling url " + url
+	# Reset all leds
+	command = ""
+	for i in range(0,6):
+		command += pack('!BBBBB', i, 2, 0, 0, 0)
+
+	ser.write(command)
+	ser.flush()
+	return ser
+
+url_base = "https://localhost:8443/jenkins/"
+job_url = url_base + "job/" + sys.argv[1] + "/lastBuild/api/json"
+username = sys.argv[2]
+print "Checking for user jobs for " + username
+
+serial = open_serial('/dev/ttyUSB1', 9600)
+
+print "Polling job_url " + job_url
 while True:
-	r = requests.get(url, verify= False)
+	r = requests.get(job_url, verify=False)
 	job_status = r.json()
 	
-	i = 0
 	command = ""
+	if is_current_user_build(username, job_status):
+		command += pack('!BBBBB', 5, 2, 0, 255, 0)
+
+	i = 0
 	for build in job_status['subBuilds']:
 		if build['result'] == 'SUCCESS':
-			command += pack('!BBBBB', i, 2, 0, 255, 0)
+			command += pack('!BBBBB', i, 2, 0, 0, 255)
 		if build['result'] == None:
 			command += pack('!BBBBBH', i, 0, 0, 0, 255, 0)
 		if build['result'] == 'FAILURE':
@@ -38,7 +59,6 @@ while True:
 		i += 1
 
 	if len(command) > 0:
-		ser.write(command)
+		serial.write(command)
 
 	time.sleep(2)
-	
