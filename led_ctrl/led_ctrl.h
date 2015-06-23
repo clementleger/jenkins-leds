@@ -13,7 +13,7 @@ typedef struct led_ctrl_state_blink {
 } led_ctrl_state_blink_t __attribute__((packed));
 
 typedef struct led_ctrl_state_fade {
-	uint16_t rate_per_sec;
+	uint16_t duration;
 } led_ctrl_state_fade_t __attribute__((packed));
 
 typedef struct led_ctrl_state_set {
