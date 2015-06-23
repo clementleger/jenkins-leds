@@ -17,18 +17,20 @@ def is_current_user_build(username, job_json):
 			
 	return False
 
-def open_serial(device, baudrate):
-	ser = serial.Serial(device, baudrate)
-
-	# The arduino take some times to boot after reset, let it cool
-	time.sleep(1)
-
+def reset_leds(serial):
 	# Reset all leds
 	command = ""
 	for i in range(0,6):
 		command += pack('!BBBBB', i, 2, 0, 0, 0)
 
-	ser.write(command)
+	serial.write(command)
+	serial.flush()
+
+def open_serial(device, baudrate):
+	ser = serial.Serial(device, baudrate)
+
+	# The arduino take some times to boot after reset, let it cool
+	time.sleep(1)
 	ser.flush()
 	return ser
 
@@ -39,10 +41,16 @@ print "Checking for user jobs for " + username
 
 serial = open_serial('/dev/ttyUSB1', 9600)
 
+build_number = 0
 print "Polling job_url " + job_url
 while True:
 	r = requests.get(job_url, verify=False)
 	job_status = r.json()
+	
+	if build_number != job_status['number']:
+		reset_leds(serial)
+		build_number = job_status['number']
+		print "Job number : " + str(build_number)
 	
 	command = ""
 	if is_current_user_build(username, job_status):
