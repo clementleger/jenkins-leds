@@ -3,6 +3,8 @@
 import requests, json, sys, time, serial
 from struct import *
 
+led_count = 12
+
 if len(sys.argv) < 3:
 	print 'Missing Job name and username'
 	exit(1)
@@ -26,16 +28,16 @@ def is_current_user_build(username, job_json):
 def get_led_constant_cmd(led, r, g, b):
 	return pack('!BBBBB', led, 2, r, g, b)
 	
-def get_led_fade_cmd(led, r, g , b, fade_timeout):
-	return pack('!BBBBBH', led, 0, r, g, b, fade_timeout)
+def get_led_fade_cmd(led, r, g , b):
+	return pack('!BBBBB', led, 0, r, g, b)
 
-def get_led_blink_cmd(led, r, g , b, on_duration, off_duration):
-	return pack('!BBBBBHH', led, 1, r, g, b, on_duration, off_duration)
+def get_led_blink_cmd(led, r, g , b):
+	return pack('!BBBBB', led, 1, r, g, b)
 
 def reset_leds(serial):
 	# Reset all leds
 	command = ""
-	for i in range(0,6):
+	for i in range(0,led_count):
 		command += get_led_constant_cmd(i, 0, 0, 0)
 
 	serial.write(command)
@@ -73,7 +75,7 @@ while True:
 	user_build = is_current_user_build(username, job_status)
 	
 	if job_failed and user_build:
-		serial.write(get_led_fade_cmd(5, 255, 0, 0, 0))
+		serial.write(get_led_fade_cmd(5, 255, 0, 0))
 	elif user_build:
 		command += get_led_constant_cmd(5, 0, 255, 0)
 
