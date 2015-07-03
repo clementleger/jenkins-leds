@@ -113,6 +113,7 @@ class JenkinsJobLeds:
 	SUCCESS_COLOR = Color(0, 0, 255)
 	USER_FAILURE_COLOR = Color(255, 0, 0)
 	USER_COLOR = Color(0, 255, 0)
+	UNSTABLE_COLOR = Color(229, 198, 0)
 	FAILURE_COLOR = Color(255, 0, 0)
 
 	def __init__(self, job, leds, username):
@@ -134,6 +135,8 @@ class JenkinsJobLeds:
 		for build in self.job.job_status['subBuilds']:
 			if build['result'] == 'SUCCESS':
 				self.leds.set_led_constant(i, self.SUCCESS_COLOR)
+			if build['result'] == 'UNSTABLE':
+				self.leds.set_led_constant(i, self.UNSTABLE_COLOR)
 			if build['result'] == None:
 				if user_build:
 					self.leds.set_led_fade(i, self.USER_COLOR)
