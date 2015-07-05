@@ -1,11 +1,19 @@
 #include <Adafruit_NeoPixel.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include "./led_ctrl.h"
 
-#define PIN            6
-#define NUMPIXELS      12
+#define PIN				6
+#define NUMPIXELS			12
 
-#define SIN_STEPS	40
-#define STEP_INCREMENT	((float) 1/(float)SIN_STEPS)
+#define SIN_STEPS			40
+#define STEP_INCREMENT			((float) 1/(float)SIN_STEPS)
+
+#define ONE_WIRE_BUS			12
+#define TEMP_UPDATE_TIME		10000
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ400);
 
@@ -31,18 +39,41 @@ void setup_led(led_ctrl_state_set_t state_set)
 	}
 }
 
+unsigned long last_temp_conv_start = 0;
+float last_temp_value = 0;
+
+void check_temp_acquisition()
+{
+	unsigned long cur_millis = millis();
+	
+	if (cur_millis > last_temp_conv_start + TEMP_UPDATE_TIME) {
+		last_temp_value = sensors.getTempCByIndex(0);
+
+		last_temp_conv_start = cur_millis;
+		sensors.requestTemperatures();
+	}
+}
+
 int check_serial()
 {
 	led_ctrl_state_set_t state;
+	led_ctrl_msg_t msg;
 
-        if (Serial.available() >= sizeof(led_ctrl_state_set_t)) {
-		Serial.readBytes((char *) &state, sizeof(led_ctrl_state_set_t));
+	if (Serial.available() >= sizeof(led_ctrl_msg_t)) {
+		Serial.readBytes((char *) &msg, sizeof(led_ctrl_msg_t));
 
-		setup_led (state);
-		return 1;
+		switch (msg.type) {
+			case LED_CTRL_STATE_SET:
+				Serial.readBytes((char *) &state, sizeof(led_ctrl_state_set_t));
+				setup_led (state);
+				return 1;
+			case LED_CTRL_TEMP_GET:
+				Serial.write((char *) &last_temp_value, sizeof(float));
+				return 0;
+		}
+	} else {
+		return 0;
 	}
-	
-	return 0;
 }
 
 static unsigned long blink_update_millis = 0;
@@ -53,8 +84,20 @@ static bool blink_state = false;
 void setup()
 {
 	Serial.begin(9600);
+
 	pixels.begin();
 	pixels.setBrightness(50);
+
+	sensors.begin();
+	
+	/* Read the temperature one time at beginning */
+	sensors.requestTemperatures();
+	last_temp_value = sensors.getTempCByIndex(0);
+
+	/* Then setup the first asynchronous call */
+	sensors.setWaitForConversion(false);
+	last_temp_conv_start = millis();
+	sensors.requestTemperatures();
 }
 
 void loop()
@@ -64,6 +107,8 @@ void loop()
         bool update = false, blink_update = false, fade_update = false;
 	float prop;
 	unsigned long current_millis = millis();
+	
+	check_temp_acquisition();
 	
 	if ((current_millis - blink_update_millis) >= 500) {
 		blink_update_millis = current_millis;

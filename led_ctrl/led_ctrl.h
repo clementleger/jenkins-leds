@@ -13,4 +13,17 @@ typedef struct led_ctrl_state_set {
 	uint8_t r, g, b;
 } led_ctrl_state_set_t __attribute__((packed));
 
+enum led_ctrl_msg_type {
+	LED_CTRL_STATE_SET = 0,
+	LED_CTRL_TEMP_GET,
+};
+
+typedef struct led_ctrl_msg {
+	uint8_t type;
+} led_ctrl_msg_t;
+
+typedef struct led_ctrl_msg_temp {
+	float temp;
+} led_ctrl_msg_temp_t;
+
 #endif
