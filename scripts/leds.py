@@ -57,7 +57,7 @@ class LedController:
 	LED_CONTROLLER_LED_COUNT = 12
 
 	LED_DEFAULT_BAUDRATE = 9600
-	LED_DEFAULT_DEVICE = "/dev/ttyUSB1"
+	LED_DEFAULT_DEVICE = "/dev/ttyUSB0"
 
 	def __init__ (self, device = LED_DEFAULT_DEVICE, baudrate = LED_DEFAULT_BAUDRATE):
 		self.serial = serial.Serial(device, baudrate)
@@ -122,4 +122,8 @@ class SubLedController:
 		for led in range(0, self.led_count):
 			self.set_led_constant(led, Color(0, 0, 0))
 
+	def get_led_count(self):
+		return self.led_count
 
+	def get_temp(self):
+		return self.leds.get_temp()
